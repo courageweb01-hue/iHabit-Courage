@@ -9,7 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [Habit::class, CompletionLog::class], version = 1, exportSchema = false)
+@Database(entities = [Habit::class, CompletionLog::class], version = 2, exportSchema = false)
 abstract class HabitDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
 
@@ -47,11 +47,12 @@ abstract class HabitDatabase : RoomDatabase() {
             suspend fun populateInitialData(dao: HabitDao) {
                 val initialHabits = listOf(
                     Habit(
-                        title = "Drink 2L Water",
+                        title = "Drink 8 Glasses of Water",
                         category = "Health",
                         icon = "Water",
                         colorHex = "#007AFF",
-                        targetDays = 7,
+                        scheduleType = "COUNTER",
+                        targetCount = 8,
                         streak = 3
                     ),
                     Habit(
@@ -59,6 +60,8 @@ abstract class HabitDatabase : RoomDatabase() {
                         category = "Fitness",
                         icon = "Workout",
                         colorHex = "#FF3B30",
+                        scheduleType = "WEEKLY_DAYS",
+                        targetDaysList = "1,2,3,4,5", // Mon - Fri
                         targetDays = 5,
                         streak = 5
                     ),
@@ -67,7 +70,8 @@ abstract class HabitDatabase : RoomDatabase() {
                         category = "Productivity",
                         icon = "Book",
                         colorHex = "#FF9500",
-                        targetDays = 7,
+                        scheduleType = "COUNTER",
+                        targetCount = 15,
                         streak = 2
                     ),
                     Habit(
@@ -75,7 +79,7 @@ abstract class HabitDatabase : RoomDatabase() {
                         category = "Mind",
                         icon = "Meditation",
                         colorHex = "#AF52DE",
-                        targetDays = 7,
+                        scheduleType = "DAILY",
                         streak = 4
                     ),
                     Habit(
@@ -83,7 +87,7 @@ abstract class HabitDatabase : RoomDatabase() {
                         category = "Health",
                         icon = "Sleep",
                         colorHex = "#5856D6",
-                        targetDays = 7,
+                        scheduleType = "DAILY",
                         streak = 1
                     )
                 )

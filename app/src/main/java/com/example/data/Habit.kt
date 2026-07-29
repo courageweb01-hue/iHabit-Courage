@@ -13,6 +13,9 @@ data class Habit(
     val colorHex: String, // e.g., "#007AFF"
     val frequency: String = "EVERYDAY", // "EVERYDAY", "WEEKDAYS", "WEEKENDS"
     val targetDays: Int = 7,
+    val scheduleType: String = "DAILY", // "DAILY", "WEEKLY_DAYS", "COUNTER"
+    val targetDaysList: String = "1,2,3,4,5,6,7", // Comma-separated day numbers (1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun)
+    val targetCount: Int = 1, // Target numerical value (e.g., 8 for water)
     val streak: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val reminderTime: String? = null,

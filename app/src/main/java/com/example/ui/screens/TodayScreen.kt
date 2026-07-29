@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,8 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,34 +26,57 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.data.ActiveJourneyState
 import com.example.data.Habit
+import com.example.data.JourneyProgram
+import com.example.data.JourneysData
 import com.example.ui.HabitItemUiState
+import com.example.ui.components.ActiveJourneyBanner
+import com.example.ui.components.DailyLessonModal
+import com.example.ui.components.FocusTimerModal
 import com.example.ui.components.HabitCard
+import com.example.ui.components.JourneyDetailModal
+import com.example.ui.theme.FrostedPurplePrimary
 import com.example.ui.theme.IOSBlue
 import com.example.ui.theme.IOSGreen
+import com.example.ui.theme.IOSOrange
+import com.example.utils.DateEditStatus
+import com.example.utils.DateEngine
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-import androidx.compose.foundation.BorderStroke
-import com.example.ui.theme.FrostedPurplePrimary
 
 @Composable
 fun TodayScreen(
     selectedDate: LocalDate,
+    systemToday: LocalDate,
     habits: List<HabitItemUiState>,
+    activeJourneyStates: List<ActiveJourneyState> = emptyList(),
     onSelectDate: (LocalDate) -> Unit,
+    onJumpToToday: () -> Unit,
     onToggleHabit: (Long, Boolean) -> Unit,
+    onSkipHabit: (habitId: Long, isSkipped: Boolean) -> Unit,
+    onIncrementCounterHabit: (habitId: Long, currentCount: Int, targetCount: Int, delta: Int) -> Unit,
     onDeleteHabit: (Habit) -> Unit,
     onAddHabitClick: () -> Unit,
+    onCompleteDailyLesson: (journeyId: String, dayNumber: Int) -> Unit = { _, _ -> },
+    onPauseJourney: (journeyId: String) -> Unit = {},
+    onStartJourney: (JourneyProgram) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val dateDays = (-3..3).map { LocalDate.now().plusDays(it.toLong()) }
+    var activeTimerHabit by remember { mutableStateOf<Habit?>(null) }
+    var activeDailyLessonState by remember { mutableStateOf<Pair<ActiveJourneyState, JourneyProgram>?>(null) }
+    var activeRoadmapProgram by remember { mutableStateOf<JourneyProgram?>(null) }
+
+    val dateDays = (-4..4).map { systemToday.plusDays(it.toLong()) }
     val completedCount = habits.count { it.isCompleted }
     val totalCount = habits.size
     val progressRatio = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f
+    val dateEditStatus = DateEngine.getDateEditStatus(selectedDate, systemToday)
+    val isNotToday = selectedDate != systemToday
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -81,23 +106,54 @@ fun TodayScreen(
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
-            // Header Title
+            // Header Title & Jump to Today Button
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                Column {
-                    Text(
-                        text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = FrostedPurplePrimary,
-                        fontSize = 13.sp,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (selectedDate == LocalDate.now()) "Today" else "Habits",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = FrostedPurplePrimary,
+                            fontSize = 13.sp,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (selectedDate == systemToday) "Today" else if (selectedDate == systemToday.minusDays(1)) "Yesterday" else if (selectedDate.isAfter(systemToday)) "Scheduled" else "History",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    if (isNotToday) {
+                        Button(
+                            onClick = onJumpToToday,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = FrostedPurplePrimary,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("btn_jump_to_today")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Today,
+                                contentDescription = "Jump to Today",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Today",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -110,7 +166,7 @@ fun TodayScreen(
                 ) {
                     items(dateDays) { day ->
                         val isSelected = day == selectedDate
-                        val isToday = day == LocalDate.now()
+                        val isToday = day == systemToday
 
                         Box(
                             modifier = Modifier
@@ -119,7 +175,7 @@ fun TodayScreen(
                                 .clip(RoundedCornerShape(22.dp))
                                 .background(
                                     if (isSelected) FrostedPurplePrimary
-                                    else if (isToday) FrostedPurplePrimary.copy(alpha = 0.15f)
+                                    else if (isToday) FrostedPurplePrimary.copy(alpha = 0.18f)
                                     else MaterialTheme.colorScheme.surface
                                 )
                                 .clickable { onSelectDate(day) }
@@ -131,10 +187,11 @@ fun TodayScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = day.format(DateTimeFormatter.ofPattern("EEE")).uppercase(),
-                                    fontSize = 11.sp,
+                                    text = if (isToday) "TODAY" else day.format(DateTimeFormatter.ofPattern("EEE")).uppercase(),
+                                    fontSize = 10.sp,
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color.White else if (isToday) FrostedPurplePrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -148,6 +205,23 @@ fun TodayScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // Active Journey Banners (pinned right on Today's Dashboard)
+            items(activeJourneyStates.filter { it.status == "active" }) { activeState ->
+                val program = JourneysData.programs.find { it.id == activeState.journeyId }
+                if (program != null) {
+                    ActiveJourneyBanner(
+                        activeState = activeState,
+                        program = program,
+                        onOpenDailyLesson = {
+                            activeDailyLessonState = Pair(activeState, program)
+                        },
+                        onPauseJourney = { onPauseJourney(activeState.journeyId) },
+                        onViewRoadmap = { activeRoadmapProgram = program },
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
             }
 
             // Today's Summary Card (Frosted Glass)
@@ -268,10 +342,74 @@ fun TodayScreen(
                     HabitCard(
                         habitState = itemState,
                         onToggle = { onToggleHabit(itemState.habit.id, itemState.isCompleted) },
-                        onDelete = { onDeleteHabit(itemState.habit) }
+                        onSkip = { onSkipHabit(itemState.habit.id, itemState.isSkipped) },
+                        onIncrementCounter = { delta ->
+                            onIncrementCounterHabit(
+                                itemState.habit.id,
+                                itemState.currentCount,
+                                itemState.habit.targetCount,
+                                delta
+                            )
+                        },
+                        onDelete = { onDeleteHabit(itemState.habit) },
+                        onOpenTimer = { activeTimerHabit = itemState.habit },
+                        dateEditStatus = dateEditStatus
                     )
                 }
             }
+        }
+
+        // Active Focus Timer Modal Sheet
+        activeTimerHabit?.let { habitToTimer ->
+            FocusTimerModal(
+                habit = habitToTimer,
+                onDismiss = { activeTimerHabit = null },
+                onCompleteHabit = {
+                    val itemState = habits.find { it.habit.id == habitToTimer.id }
+                    if (itemState != null) {
+                        if (habitToTimer.scheduleType == "COUNTER" || habitToTimer.targetCount > 1) {
+                            val remainingNeeded = habitToTimer.targetCount - itemState.currentCount
+                            if (remainingNeeded > 0) {
+                                onIncrementCounterHabit(
+                                    habitToTimer.id,
+                                    itemState.currentCount,
+                                    habitToTimer.targetCount,
+                                    remainingNeeded
+                                )
+                            }
+                        } else {
+                            if (!itemState.isCompleted) {
+                                onToggleHabit(habitToTimer.id, false)
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        // Active Daily Coaching Lesson Modal Sheet
+        activeDailyLessonState?.let { (state, program) ->
+            DailyLessonModal(
+                activeState = state,
+                program = program,
+                onDismiss = { activeDailyLessonState = null },
+                onCompleteLesson = { dayNumber ->
+                    onCompleteDailyLesson(program.id, dayNumber)
+                }
+            )
+        }
+
+        // Active Roadmap Detail Modal Sheet
+        activeRoadmapProgram?.let { prog ->
+            val isActive = activeJourneyStates.any { it.journeyId == prog.id && it.status == "active" }
+            JourneyDetailModal(
+                program = prog,
+                isActive = isActive,
+                onDismiss = { activeRoadmapProgram = null },
+                onStartJourney = { p ->
+                    onStartJourney(p)
+                    activeRoadmapProgram = null
+                }
+            )
         }
     }
 }

@@ -51,7 +51,42 @@ class HabitRepository(private val habitDao: HabitDao) {
                 CompletionLog(
                     habitId = habitId,
                     date = dateStr,
-                    status = "COMPLETED"
+                    status = "COMPLETED",
+                    value = 1
+                )
+            )
+        }
+        updateStreakForHabit(habitId)
+    }
+
+    suspend fun toggleHabitSkip(habitId: Long, dateStr: String, isCurrentlySkipped: Boolean) {
+        if (isCurrentlySkipped) {
+            habitDao.deleteLogForDate(habitId, dateStr)
+        } else {
+            habitDao.insertLog(
+                CompletionLog(
+                    habitId = habitId,
+                    date = dateStr,
+                    status = "SKIPPED",
+                    value = 0
+                )
+            )
+        }
+        updateStreakForHabit(habitId)
+    }
+
+    suspend fun updateHabitCounter(habitId: Long, dateStr: String, currentCount: Int, targetCount: Int, delta: Int) {
+        val newCount = (currentCount + delta).coerceAtLeast(0)
+        if (newCount <= 0) {
+            habitDao.deleteLogForDate(habitId, dateStr)
+        } else {
+            val status = if (newCount >= targetCount) "COMPLETED" else "PROGRESS"
+            habitDao.insertLog(
+                CompletionLog(
+                    habitId = habitId,
+                    date = dateStr,
+                    status = status,
+                    value = newCount
                 )
             )
         }

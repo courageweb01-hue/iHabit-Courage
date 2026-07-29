@@ -27,10 +27,14 @@ import com.example.ui.theme.*
 import androidx.compose.foundation.BorderStroke
 import com.example.ui.theme.FrostedPurplePrimary
 
+import com.example.utils.DateEngine
+
 @Composable
 fun SettingsScreen(
     isDarkMode: Boolean,
     onToggleDarkMode: (Boolean) -> Unit,
+    cutoffHour: Int = 3,
+    onCutoffHourChange: (Int) -> Unit = {},
     onResetData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -85,7 +89,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Section: Appearance & Notifications
+        // Section: Appearance & Rollover Hours
         item {
             Text(
                 text = "PREFERENCES",
@@ -117,6 +121,74 @@ fun SettingsScreen(
                             )
                         }
                     )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // Day Rollover Hour (Night Owl Selector)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(IOSOrange.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.NightsStay,
+                                    contentDescription = "Rollover Hour",
+                                    tint = IOSOrange,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Day Rollover Time",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Habits reset at ${DateEngine.getCutoffHourLabel(cutoffHour)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Rollover Hour Segment Selector (0, 2, 3, 4 AM)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            listOf(0, 2, 3, 4).forEach { hour ->
+                                val isSelected = hour == cutoffHour
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onCutoffHourChange(hour) },
+                                    label = {
+                                        Text(
+                                            text = if (hour == 0) "12 AM" else "$hour AM",
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = FrostedPurplePrimary,
+                                        selectedLabelColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("chip_rollover_$hour")
+                                )
+                            }
+                        }
+                    }
 
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
