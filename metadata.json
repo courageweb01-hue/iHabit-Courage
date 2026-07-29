@@ -1,0 +1,6 @@
+{
+  "name": "Habit Tracker",
+  "description": "Offline-first habit tracker with iOS-style aesthetic, streak analytics, preset library, and detailed stats.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
